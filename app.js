@@ -29,6 +29,8 @@ const els = {
   cardCategory: document.querySelector("#cardCategorySelect"),
   cardNote: document.querySelector("#cardNoteInput"),
   cardCsv: document.querySelector("#cardCsvInput"),
+  lineCardForm: document.querySelector("#lineCardForm"),
+  lineCardText: document.querySelector("#lineCardTextInput"),
   cardImportMessage: document.querySelector("#cardImportMessage"),
   categoryForm: document.querySelector("#categoryForm"),
   categoryName: document.querySelector("#categoryNameInput"),
@@ -73,6 +75,7 @@ function bindEvents() {
   els.recordForm.addEventListener("submit", addRecord);
   els.cardForm.addEventListener("submit", addCardRecord);
   els.cardCsv.addEventListener("change", importCardCsv);
+  els.lineCardForm.addEventListener("submit", importLineCardNotice);
   els.monthInput.addEventListener("change", renderMonthlySummary);
   els.categoryForm.addEventListener("submit", addCategory);
   els.reminderForm.addEventListener("submit", addReminder);
@@ -493,6 +496,87 @@ async function importCardCsv(event) {
   } finally {
     els.cardCsv.value = "";
   }
+}
+
+function importLineCardNotice(event) {
+  event.preventDefault();
+  const text = els.lineCardText.value.trim();
+  if (!text) {
+    showCardMessage("請先貼上 LINE 刷卡通知內容。", true);
+    return;
+  }
+
+  const parsed = parseLineCardNotice(text);
+  if (!parsed) {
+    showCardMessage("目前無法解析這則通知。請確認內容有日期、金額或商店名稱。", true);
+    return;
+  }
+
+  const category = findOrCreateCategory(parsed.categoryName, parsed.categoryColor);
+  state.records.unshift({
+    id: crypto.randomUUID(),
+    type: "expense",
+    amount: parsed.amount,
+    categoryId: category.id,
+    categoryName: category.name,
+    categoryColor: category.color,
+    note: parsed.note,
+    date: parsed.date,
+    payment: "card",
+    source: "line-card",
+    createdAt: new Date().toISOString()
+  });
+
+  saveState();
+  els.lineCardForm.reset();
+  showCardMessage(`已從 LINE 通知加入：${parsed.note} $${formatMoney(parsed.amount)}`, false);
+  render();
+}
+
+function parseLineCardNotice(text) {
+  const compact = text.replace(/\s+/g, " ").trim();
+  const amountMatch =
+    compact.match(/(?:NT\$|NTD|TWD|新臺幣|新台幣|台幣|金額[:：]?|消費[:：]?)\s*\$?\s*([\d,]+)/i) ||
+    compact.match(/([\d,]+)\s*元/);
+  const amount = amountMatch ? Number(amountMatch[1].replace(/,/g, "")) : NaN;
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+
+  const dateMatch =
+    compact.match(/(\d{4})[/-](\d{1,2})[/-](\d{1,2})/) ||
+    compact.match(/(\d{1,2})[/-](\d{1,2})/);
+  const date = dateMatch ? dateFromLineMatch(dateMatch) : todayISO();
+  const merchant = extractMerchant(compact);
+  const categoryName = guessCategory(merchant || compact);
+
+  return {
+    amount,
+    date,
+    note: merchant || "國泰 LINE 刷卡通知",
+    categoryName,
+    categoryColor: "#8ce99a"
+  };
+}
+
+function dateFromLineMatch(match) {
+  if (match.length === 4) {
+    return `${match[1]}-${pad(Number(match[2]))}-${pad(Number(match[3]))}`;
+  }
+  const year = new Date().getFullYear();
+  return `${year}-${pad(Number(match[1]))}-${pad(Number(match[2]))}`;
+}
+
+function extractMerchant(text) {
+  const patterns = [
+    /(?:商店|特店|店家|消費地|交易說明|摘要)[:：]\s*([^，。,;；]+)/,
+    /(?:於|在)\s*([^，。,;；]+?)\s*(?:消費|刷卡|交易)/,
+    /(?:消費|刷卡|交易)\s*(?:於|在)\s*([^，。,;；]+)/
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match?.[1]) return match[1].trim();
+  }
+  return "";
 }
 
 function parseCsv(text) {
