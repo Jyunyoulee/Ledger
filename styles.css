@@ -42,7 +42,7 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 240px 1fr;
   min-height: 100vh;
   min-height: 100dvh;
 }
@@ -51,7 +51,7 @@ button {
   position: sticky;
   top: 0;
   height: 100vh;
-  padding: 28px 22px;
+  padding: 22px 18px;
   background: rgba(4, 11, 17, 0.74);
   border-right: 1px solid var(--line);
   backdrop-filter: blur(18px);
@@ -147,15 +147,18 @@ button {
 
 .workspace {
   padding: max(28px, env(safe-area-inset-top)) max(28px, env(safe-area-inset-right)) max(28px, env(safe-area-inset-bottom)) max(28px, env(safe-area-inset-left));
+  max-width: 1720px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .hero-band {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
-  gap: 22px;
-  align-items: end;
-  min-height: 260px;
-  padding: 30px;
+  grid-template-columns: minmax(0, 1fr) minmax(520px, 0.85fr);
+  gap: 18px;
+  align-items: center;
+  min-height: 178px;
+  padding: 22px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
@@ -174,18 +177,19 @@ button {
 
 .hero-band h2 {
   max-width: 760px;
-  font-size: clamp(2rem, 5vw, 4.4rem);
-  line-height: 1.04;
+  font-size: clamp(1.8rem, 3vw, 3.1rem);
+  line-height: 1.08;
 }
 
 .hero-copy {
   max-width: 720px;
-  margin: 18px 0 0;
-  line-height: 1.75;
+  margin: 12px 0 0;
+  line-height: 1.6;
 }
 
 .metric-grid {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -198,7 +202,7 @@ button {
 }
 
 .metric-tile {
-  padding: 18px;
+  padding: 14px;
 }
 
 .metric-tile span {
@@ -209,23 +213,40 @@ button {
 
 .metric-tile strong {
   display: block;
-  margin-top: 8px;
-  font-size: 1.7rem;
+  margin-top: 6px;
+  font-size: 1.45rem;
 }
 
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(340px, 1fr) minmax(340px, 1fr);
-  gap: 18px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: start;
+  gap: 14px;
   margin-top: 18px;
 }
 
 .panel {
-  padding: 22px;
+  padding: 18px;
+}
+
+.record-panel {
+  grid-column: span 5;
+}
+
+.summary-panel {
+  grid-column: span 4;
+}
+
+.category-panel {
+  grid-column: span 3;
+}
+
+.reminder-panel {
+  grid-column: span 4;
 }
 
 .ledger-panel {
-  grid-column: 1 / -1;
+  grid-column: span 8;
 }
 
 .panel-heading {
@@ -233,7 +254,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .panel h3 {
@@ -271,7 +292,7 @@ button {
 .form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
 }
 
 label span {
@@ -313,7 +334,7 @@ select:focus {
 
 .primary-action {
   width: 100%;
-  margin-top: 16px;
+  margin-top: 14px;
 }
 
 .ghost-action,
@@ -342,7 +363,7 @@ select:focus {
 .reminder-list,
 .record-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .bar-row,
@@ -351,7 +372,7 @@ select:focus {
 .record-item {
   display: grid;
   gap: 8px;
-  padding: 12px;
+  padding: 10px;
   border: 1px solid rgba(160, 232, 255, 0.12);
   border-radius: 8px;
   background: rgba(2, 9, 14, 0.38);
@@ -417,8 +438,8 @@ select:focus {
 }
 
 .hint {
-  margin: 14px 0 0;
-  line-height: 1.6;
+  margin: 10px 0 0;
+  line-height: 1.5;
 }
 
 .toast {
@@ -456,6 +477,14 @@ select:focus {
   .hero-band,
   .content-grid {
     grid-template-columns: 1fr;
+  }
+
+  .record-panel,
+  .summary-panel,
+  .category-panel,
+  .reminder-panel,
+  .ledger-panel {
+    grid-column: auto;
   }
 }
 
