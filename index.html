@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Neon Ledger 記帳提醒</title>
+  <meta name="theme-color" content="#071016">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Neon Ledger">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="記帳導覽">
+      <div class="brand">
+        <div class="brand-mark">NL</div>
+        <div>
+          <h1>Neon Ledger</h1>
+          <p>每日記帳控制台</p>
+        </div>
+      </div>
+
+      <nav class="nav-list" aria-label="主要功能">
+        <a href="#record-panel" class="nav-link active">新增帳目</a>
+        <a href="#summary-panel" class="nav-link">今日總覽</a>
+        <a href="#category-panel" class="nav-link">類別管理</a>
+        <a href="#reminder-panel" class="nav-link">提醒設定</a>
+      </nav>
+
+      <section class="status-strip" aria-label="提醒狀態">
+        <span class="pulse"></span>
+        <div>
+          <strong id="notifyState">提醒待啟用</strong>
+          <small id="nextReminder">下一次提醒計算中</small>
+        </div>
+      </section>
+    </aside>
+
+    <main class="workspace">
+      <section class="hero-band">
+        <div>
+          <p class="eyebrow">Personal Finance OS</p>
+          <h2>把每一筆花費變成清楚的資料訊號</h2>
+          <p class="hero-copy">支援自訂帳目類別、每日定時提醒、瀏覽器本機儲存，適合先在 Windows 開發，再搬到 Raspberry Pi 4 使用。</p>
+        </div>
+        <div class="metric-grid" aria-label="今日摘要">
+          <div class="metric-tile">
+            <span>今日支出</span>
+            <strong id="todayExpense">$0</strong>
+          </div>
+          <div class="metric-tile">
+            <span>本月結餘</span>
+            <strong id="monthBalance">$0</strong>
+          </div>
+          <div class="metric-tile">
+            <span>帳目筆數</span>
+            <strong id="recordCount">0</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="content-grid">
+        <form id="recordForm" class="panel record-panel" aria-labelledby="recordTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Quick Entry</p>
+              <h3 id="recordTitle">新增帳目</h3>
+            </div>
+            <div class="segmented" role="group" aria-label="收支類型">
+              <input type="radio" name="type" id="expenseType" value="expense" checked>
+              <label for="expenseType">支出</label>
+              <input type="radio" name="type" id="incomeType" value="income">
+              <label for="incomeType">收入</label>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <label>
+              <span>金額</span>
+              <input id="amountInput" type="number" min="1" step="1" placeholder="例如 120" required>
+            </label>
+            <label>
+              <span>類別</span>
+              <select id="categorySelect" required></select>
+            </label>
+            <label>
+              <span>日期</span>
+              <input id="dateInput" type="date" required>
+            </label>
+            <label>
+              <span>備註</span>
+              <input id="noteInput" type="text" maxlength="40" placeholder="早餐、交通、材料費">
+            </label>
+          </div>
+
+          <button class="primary-action" type="submit">加入帳目</button>
+          <p class="form-message" id="formMessage" role="status"></p>
+        </form>
+
+        <section id="summary-panel" class="panel summary-panel" aria-labelledby="summaryTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Signal View</p>
+              <h3 id="summaryTitle">類別分布</h3>
+            </div>
+            <button id="clearRecordsBtn" class="ghost-action" type="button">清除帳目</button>
+          </div>
+          <div id="categoryBars" class="bars" aria-live="polite"></div>
+        </section>
+
+        <section id="category-panel" class="panel category-panel" aria-labelledby="categoryTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Custom Taxonomy</p>
+              <h3 id="categoryTitle">帳目類別</h3>
+            </div>
+          </div>
+          <form id="categoryForm" class="inline-form">
+            <input id="categoryNameInput" type="text" maxlength="12" placeholder="新增類別名稱" required>
+            <input id="categoryColorInput" type="color" value="#38d9a9" aria-label="類別顏色">
+            <button type="submit">新增</button>
+          </form>
+          <div id="categoryList" class="category-list" aria-live="polite"></div>
+        </section>
+
+        <section id="reminder-panel" class="panel reminder-panel" aria-labelledby="reminderTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Reminder Core</p>
+              <h3 id="reminderTitle">每日提醒</h3>
+            </div>
+            <button id="enableNotifyBtn" class="ghost-action" type="button">啟用通知</button>
+          </div>
+          <form id="reminderForm" class="inline-form reminder-form">
+            <input id="reminderTimeInput" type="time" required>
+            <button type="submit">加入時間</button>
+          </form>
+          <div id="reminderList" class="reminder-list" aria-live="polite"></div>
+          <p class="hint">預設提醒：12:30、21:20。瀏覽器通知需要保持 App 開啟。</p>
+        </section>
+
+        <section class="panel ledger-panel" aria-labelledby="ledgerTitle">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Ledger Stream</p>
+              <h3 id="ledgerTitle">最近帳目</h3>
+            </div>
+          </div>
+          <div id="recordList" class="record-list" aria-live="polite"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>

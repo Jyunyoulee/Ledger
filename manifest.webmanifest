@@ -1,0 +1,19 @@
+{
+  "name": "Neon Ledger 記帳提醒",
+  "short_name": "記帳提醒",
+  "description": "適合 iPhone 加到主畫面的本機記帳 App",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#071016",
+  "theme_color": "#071016",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
