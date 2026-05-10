@@ -1,4 +1,6 @@
 const STORAGE_KEY = "neon-ledger-state-v1";
+const SUPABASE_URL = "https://xezllktkpkoxntgmwcy.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_AsuSML0FD5qldPf-Cw-0FQ_ujHvlGYX";
 
 const defaultState = {
   categories: [
@@ -60,11 +62,12 @@ const els = {
 
 init();
 
-function init() {
+async function init() {
   els.date.value = todayISO();
   els.cardDate.value = todayISO();
   els.monthInput.value = todayISO().slice(0, 7);
   bindEvents();
+  await syncCloudRecords();
   render();
   updateNotificationStatus();
   startReminderLoop();
@@ -106,6 +109,109 @@ function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function cloudEnabled() {
+  return SUPABASE_URL && SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes("PASTE");
+}
+
+async function syncCloudRecords() {
+  if (!cloudEnabled()) return;
+
+  try {
+    const cloudRecords = await fetchCloudRecords();
+    const cloudIds = new Set(cloudRecords.map((record) => record.id));
+    const localOnly = state.records.filter((record) => !cloudIds.has(record.id));
+    state.records = [...cloudRecords, ...localOnly].sort(compareRecordsByTime);
+    saveState();
+  } catch (error) {
+    console.warn("雲端帳目同步失敗，暫時使用本機資料：", error);
+  }
+}
+
+async function fetchCloudRecords() {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/records?select=*&order=created_at.desc`, {
+    headers: cloudHeaders()
+  });
+
+  if (!response.ok) {
+    throw new Error(`Supabase select failed: ${response.status} ${await response.text()}`);
+  }
+
+  const rows = await response.json();
+  return rows.map(recordFromCloud);
+}
+
+async function syncRecordToCloud(record) {
+  if (!cloudEnabled()) return;
+  try {
+    await syncRecordsToCloud([record]);
+  } catch (error) {
+    console.warn("雲端帳目寫入失敗，已保留在本機：", error);
+  }
+}
+
+async function syncRecordsToCloud(records) {
+  if (!cloudEnabled() || !records.length) return;
+  const payload = records.map(recordToCloud);
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/records`, {
+    method: "POST",
+    headers: {
+      ...cloudHeaders(),
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    throw new Error(`Supabase upsert failed: ${response.status} ${await response.text()}`);
+  }
+}
+
+function cloudHeaders() {
+  return {
+    apikey: SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${SUPABASE_ANON_KEY}`
+  };
+}
+
+function recordToCloud(record) {
+  return {
+    id: record.id,
+    created_at: record.createdAt || new Date().toISOString(),
+    date: record.date,
+    type: record.type || "expense",
+    amount: record.amount,
+    category_name: record.categoryName || "信用卡",
+    category_color: record.categoryColor || "#8ce99a",
+    note: record.note || "",
+    payment: record.payment || "card",
+    source: record.source || "manual",
+    raw_text: record.rawText || ""
+  };
+}
+
+function recordFromCloud(row) {
+  const category = findOrCreateCategory(row.category_name || "信用卡", row.category_color || "#8ce99a");
+  return {
+    id: row.id,
+    type: row.type || "expense",
+    amount: Number(row.amount) || 0,
+    categoryId: category.id,
+    categoryName: category.name,
+    categoryColor: category.color,
+    note: row.note || "",
+    date: row.date || todayISO(),
+    payment: row.payment || "card",
+    source: row.source || "cloud",
+    rawText: row.raw_text || "",
+    createdAt: row.created_at || new Date().toISOString()
+  };
+}
+
+function compareRecordsByTime(a, b) {
+  return new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime();
+}
+
 function normalizeRecord(record) {
   return {
     ...record,
@@ -144,6 +250,9 @@ function addRecord(event) {
     createdAt: new Date().toISOString()
   });
 
+  const newestRecord = state.records[0];
+  syncRecordToCloud(newestRecord);
+
   saveState();
   els.recordForm.reset();
   document.querySelector("#expenseType").checked = true;
@@ -180,6 +289,9 @@ function addCardRecord(event) {
     source: "card",
     createdAt: new Date().toISOString()
   });
+
+  const newestRecord = state.records[0];
+  syncRecordToCloud(newestRecord);
 
   saveState();
   els.cardForm.reset();
@@ -487,6 +599,7 @@ async function importCardCsv(event) {
     }
 
     state.records = [...imported, ...state.records];
+    syncRecordsToCloud(imported);
     saveState();
     showCardMessage(`已匯入 ${imported.length} 筆信用卡帳目。`, false);
     render();
@@ -526,6 +639,9 @@ function importLineCardNotice(event) {
     source: "line-card",
     createdAt: new Date().toISOString()
   });
+
+  const newestRecord = state.records[0];
+  syncRecordToCloud(newestRecord);
 
   saveState();
   els.lineCardForm.reset();
@@ -567,6 +683,7 @@ function dateFromLineMatch(match) {
 
 function extractMerchant(text) {
   const patterns = [
+    /(?:商店名稱|商店|特店|店家|消費地|交易說明|摘要)\s+([^，。,;；\s]+(?:\s+[^，。,;；\s]+)*)/,
     /(?:商店|特店|店家|消費地|交易說明|摘要)[:：]\s*([^，。,;；]+)/,
     /(?:於|在)\s*([^，。,;；]+?)\s*(?:消費|刷卡|交易)/,
     /(?:消費|刷卡|交易)\s*(?:於|在)\s*([^，。,;；]+)/
