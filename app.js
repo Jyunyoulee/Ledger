@@ -20,8 +20,16 @@ const els = {
   amount: document.querySelector("#amountInput"),
   category: document.querySelector("#categorySelect"),
   date: document.querySelector("#dateInput"),
+  payment: document.querySelector("#paymentInput"),
   note: document.querySelector("#noteInput"),
   recordForm: document.querySelector("#recordForm"),
+  cardForm: document.querySelector("#cardForm"),
+  cardDate: document.querySelector("#cardDateInput"),
+  cardAmount: document.querySelector("#cardAmountInput"),
+  cardCategory: document.querySelector("#cardCategorySelect"),
+  cardNote: document.querySelector("#cardNoteInput"),
+  cardCsv: document.querySelector("#cardCsvInput"),
+  cardImportMessage: document.querySelector("#cardImportMessage"),
   categoryForm: document.querySelector("#categoryForm"),
   categoryName: document.querySelector("#categoryNameInput"),
   categoryColor: document.querySelector("#categoryColorInput"),
@@ -33,6 +41,11 @@ const els = {
   recordList: document.querySelector("#recordList"),
   todayExpense: document.querySelector("#todayExpense"),
   monthBalance: document.querySelector("#monthBalance"),
+  monthInput: document.querySelector("#monthInput"),
+  monthExpense: document.querySelector("#monthExpense"),
+  cardExpense: document.querySelector("#cardExpense"),
+  topCategory: document.querySelector("#topCategory"),
+  savingTips: document.querySelector("#savingTips"),
   recordCount: document.querySelector("#recordCount"),
   formMessage: document.querySelector("#formMessage"),
   clearRecords: document.querySelector("#clearRecordsBtn"),
@@ -47,6 +60,8 @@ init();
 
 function init() {
   els.date.value = todayISO();
+  els.cardDate.value = todayISO();
+  els.monthInput.value = todayISO().slice(0, 7);
   bindEvents();
   render();
   updateNotificationStatus();
@@ -56,10 +71,16 @@ function init() {
 
 function bindEvents() {
   els.recordForm.addEventListener("submit", addRecord);
+  els.cardForm.addEventListener("submit", addCardRecord);
+  els.cardCsv.addEventListener("change", importCardCsv);
+  els.monthInput.addEventListener("change", renderMonthlySummary);
   els.categoryForm.addEventListener("submit", addCategory);
   els.reminderForm.addEventListener("submit", addReminder);
   els.clearRecords.addEventListener("click", clearRecords);
   els.enableNotify.addEventListener("click", requestNotificationPermission);
+  document.querySelectorAll("[data-panel-link]").forEach((link) => {
+    link.addEventListener("click", switchPanel);
+  });
 }
 
 function loadState() {
@@ -70,7 +91,7 @@ function loadState() {
     return {
       categories: Array.isArray(parsed.categories) && parsed.categories.length ? parsed.categories : structuredClone(defaultState.categories),
       reminders: Array.isArray(parsed.reminders) && parsed.reminders.length ? parsed.reminders : structuredClone(defaultState.reminders),
-      records: Array.isArray(parsed.records) ? parsed.records : []
+      records: Array.isArray(parsed.records) ? parsed.records.map(normalizeRecord) : []
     };
   } catch (error) {
     console.warn("讀取本機資料失敗，已使用預設設定：", error);
@@ -80,6 +101,14 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function normalizeRecord(record) {
+  return {
+    ...record,
+    payment: record.payment || (record.source === "card" ? "card" : "cash"),
+    source: record.source || "manual"
+  };
 }
 
 function addRecord(event) {
@@ -107,6 +136,8 @@ function addRecord(event) {
     categoryColor: category.color,
     note: els.note.value.trim(),
     date: els.date.value || todayISO(),
+    payment: els.payment.value,
+    source: "manual",
     createdAt: new Date().toISOString()
   });
 
@@ -115,6 +146,42 @@ function addRecord(event) {
   document.querySelector("#expenseType").checked = true;
   els.date.value = todayISO();
   showMessage("帳目已新增。", false);
+  render();
+}
+
+function addCardRecord(event) {
+  event.preventDefault();
+  const amount = Number(els.cardAmount.value);
+  const category = state.categories.find((item) => item.id === els.cardCategory.value);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    showCardMessage("請輸入有效的信用卡金額。", true);
+    return;
+  }
+
+  if (!category) {
+    showCardMessage("請先選擇信用卡帳目的類別。", true);
+    return;
+  }
+
+  state.records.unshift({
+    id: crypto.randomUUID(),
+    type: "expense",
+    amount,
+    categoryId: category.id,
+    categoryName: category.name,
+    categoryColor: category.color,
+    note: els.cardNote.value.trim() || "信用卡消費",
+    date: els.cardDate.value || todayISO(),
+    payment: "card",
+    source: "card",
+    createdAt: new Date().toISOString()
+  });
+
+  saveState();
+  els.cardForm.reset();
+  els.cardDate.value = todayISO();
+  showCardMessage("信用卡帳目已加入。", false);
   render();
 }
 
@@ -200,6 +267,7 @@ function render() {
   renderCategories();
   renderRecords();
   renderSummary();
+  renderMonthlySummary();
   renderReminders();
   updateNextReminder();
 }
@@ -208,6 +276,7 @@ function renderCategories() {
   els.category.innerHTML = state.categories
     .map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.name)}</option>`)
     .join("");
+  els.cardCategory.innerHTML = els.category.innerHTML;
 
   els.categoryList.innerHTML = state.categories.map((item) => `
     <div class="category-item">
@@ -250,7 +319,7 @@ function renderRecords() {
     <article class="record-item">
       <div>
         <strong class="chip"><span class="swatch" style="background:${escapeHtml(record.categoryColor)}"></span>${escapeHtml(record.categoryName)}</strong>
-        <div class="record-meta">${escapeHtml(record.date)}${record.note ? ` · ${escapeHtml(record.note)}` : ""}</div>
+        <div class="record-meta">${escapeHtml(record.date)} · ${record.payment === "card" ? "信用卡" : "現金/轉帳"}${record.note ? ` · ${escapeHtml(record.note)}` : ""}</div>
       </div>
       <strong class="amount ${record.type}">${record.type === "income" ? "+" : "-"}$${formatMoney(record.amount)}</strong>
     </article>
@@ -299,6 +368,82 @@ function renderSummary() {
   }).join("");
 }
 
+function renderMonthlySummary() {
+  const month = els.monthInput.value || todayISO().slice(0, 7);
+  const monthRecords = state.records.filter((record) => record.date.startsWith(month));
+  const expenses = monthRecords.filter((record) => record.type === "expense");
+  const income = monthRecords
+    .filter((record) => record.type === "income")
+    .reduce((sum, record) => sum + record.amount, 0);
+  const totalExpense = expenses.reduce((sum, record) => sum + record.amount, 0);
+  const cardExpense = expenses
+    .filter((record) => record.payment === "card")
+    .reduce((sum, record) => sum + record.amount, 0);
+  const categoryTotals = getCategoryTotals(expenses);
+  const top = categoryTotals[0];
+
+  els.monthExpense.textContent = `$${formatMoney(totalExpense)}`;
+  els.cardExpense.textContent = `$${formatMoney(cardExpense)}`;
+  els.topCategory.textContent = top ? `${top.name} $${formatMoney(top.amount)}` : "尚無";
+  els.savingTips.innerHTML = buildSavingTips({
+    income,
+    totalExpense,
+    cardExpense,
+    top,
+    categoryTotals,
+    monthRecords
+  }).map((tip) => `<div class="tip-item">${escapeHtml(tip)}</div>`).join("");
+}
+
+function getCategoryTotals(records) {
+  const totals = new Map();
+  records.forEach((record) => {
+    const current = totals.get(record.categoryName) || {
+      name: record.categoryName,
+      amount: 0,
+      count: 0
+    };
+    current.amount += record.amount;
+    current.count += 1;
+    totals.set(record.categoryName, current);
+  });
+  return [...totals.values()].sort((a, b) => b.amount - a.amount);
+}
+
+function buildSavingTips(data) {
+  const tips = [];
+  if (!data.monthRecords.length) {
+    return ["這個月份還沒有資料。先記幾筆帳，月結就會開始給你建議。"];
+  }
+
+  if (data.top && data.totalExpense > 0) {
+    const ratio = Math.round((data.top.amount / data.totalExpense) * 100);
+    tips.push(`${data.top.name} 是本月最大支出，占 ${ratio}%。可以先從這一類設定下月預算。`);
+    if (ratio >= 40) {
+      tips.push(`建議把 ${data.top.name} 支出降低 10%，約可省下 $${formatMoney(data.top.amount * 0.1)}。`);
+    }
+  }
+
+  const smallCardCount = data.monthRecords.filter((record) => record.payment === "card" && record.amount <= 300).length;
+  if (smallCardCount >= 5) {
+    tips.push(`本月有 ${smallCardCount} 筆 300 元以下刷卡，小額消費容易被忘記，建議每週固定匯入一次帳單。`);
+  }
+
+  if (data.cardExpense > data.totalExpense * 0.5) {
+    tips.push("信用卡已超過本月支出一半，建議把帳單日加入 iOS 提醒事項，避免忘記刷了什麼。");
+  }
+
+  if (data.income > 0 && data.totalExpense > data.income * 0.8) {
+    tips.push("本月支出已接近收入 80%，建議先暫停非必要採購，等月底再評估。");
+  }
+
+  if (!tips.length) {
+    tips.push("目前支出分布還算平均。可以繼續保持每日記帳，月底再看趨勢。");
+  }
+
+  return tips;
+}
+
 function renderReminders() {
   els.reminderList.innerHTML = state.reminders.map((time) => `
     <div class="reminder-item">
@@ -322,6 +467,146 @@ function deleteReminder(time) {
   saveState();
   renderReminders();
   updateNextReminder();
+}
+
+async function importCardCsv(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const rows = parseCsv(text);
+    const imported = rows.map(rowToCardRecord).filter(Boolean);
+
+    if (!imported.length) {
+      showCardMessage("沒有讀到可匯入的信用卡資料，請確認 CSV 欄位。", true);
+      return;
+    }
+
+    state.records = [...imported, ...state.records];
+    saveState();
+    showCardMessage(`已匯入 ${imported.length} 筆信用卡帳目。`, false);
+    render();
+  } catch (error) {
+    console.error("信用卡 CSV 匯入失敗：", error);
+    showCardMessage("CSV 匯入失敗，請確認檔案格式。", true);
+  } finally {
+    els.cardCsv.value = "";
+  }
+}
+
+function parseCsv(text) {
+  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim());
+  if (lines.length < 2) return [];
+  const headers = splitCsvLine(lines[0]).map((header) => header.trim().toLowerCase());
+  return lines.slice(1).map((line) => {
+    const values = splitCsvLine(line);
+    return headers.reduce((row, header, index) => {
+      row[header] = values[index]?.trim() || "";
+      return row;
+    }, {});
+  });
+}
+
+function splitCsvLine(line) {
+  const values = [];
+  let current = "";
+  let quoted = false;
+
+  for (const char of line) {
+    if (char === "\"") {
+      quoted = !quoted;
+    } else if (char === "," && !quoted) {
+      values.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  values.push(current);
+  return values;
+}
+
+function rowToCardRecord(row) {
+  const date = pickValue(row, ["date", "日期", "消費日期", "交易日期", "刷卡日期"]);
+  const amountText = pickValue(row, ["amount", "金額", "消費金額", "交易金額", "台幣金額"]);
+  const note = pickValue(row, ["description", "摘要", "說明", "店家", "商店", "交易明細"]);
+  const categoryName = pickValue(row, ["category", "類別"]) || guessCategory(note);
+  const amount = Number(String(amountText).replace(/[$,\s]/g, ""));
+  const normalizedDate = normalizeDate(date);
+
+  if (!normalizedDate || !Number.isFinite(amount) || amount <= 0) return null;
+
+  const category = findOrCreateCategory(categoryName || "信用卡", "#8ce99a");
+  return {
+    id: crypto.randomUUID(),
+    type: "expense",
+    amount,
+    categoryId: category.id,
+    categoryName: category.name,
+    categoryColor: category.color,
+    note: note || "信用卡帳單匯入",
+    date: normalizedDate,
+    payment: "card",
+    source: "card-csv",
+    createdAt: new Date().toISOString()
+  };
+}
+
+function pickValue(row, keys) {
+  const entries = Object.entries(row);
+  for (const key of keys) {
+    const found = entries.find(([header]) => header === key.toLowerCase() || header.includes(key.toLowerCase()));
+    if (found) return found[1];
+  }
+  return "";
+}
+
+function normalizeDate(value) {
+  const text = String(value || "").trim().replaceAll("/", "-").replaceAll(".", "-");
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(text)) {
+    const [year, month, day] = text.split("-");
+    return `${year}-${pad(Number(month))}-${pad(Number(day))}`;
+  }
+  if (/^\d{1,2}-\d{1,2}-\d{4}$/.test(text)) {
+    const [month, day, year] = text.split("-");
+    return `${year}-${pad(Number(month))}-${pad(Number(day))}`;
+  }
+  return "";
+}
+
+function guessCategory(note) {
+  const text = String(note || "");
+  if (/餐|咖啡|飲|food|restaurant|cafe/i.test(text)) return "餐飲";
+  if (/車|捷運|高鐵|交通|uber|taxi|metro/i.test(text)) return "交通";
+  if (/書|課|學|course|book/i.test(text)) return "學習";
+  if (/電腦|手機|設備|3c|apple|electronics/i.test(text)) return "設備";
+  return "信用卡";
+}
+
+function findOrCreateCategory(name, color) {
+  const found = state.categories.find((category) => category.name === name);
+  if (found) return found;
+
+  const category = {
+    id: crypto.randomUUID(),
+    name,
+    color
+  };
+  state.categories.push(category);
+  return category;
+}
+
+function switchPanel(event) {
+  const target = event.currentTarget.getAttribute("data-panel-link");
+  if (!target) return;
+
+  document.querySelectorAll("[data-panel-link]").forEach((link) => {
+    link.classList.toggle("active", link === event.currentTarget);
+  });
+  document.querySelectorAll("[data-panel]").forEach((panel) => {
+    panel.classList.toggle("active-panel", panel.id === target || (target === "monthly-panel" && panel.id === "summary-panel"));
+  });
 }
 
 function startReminderLoop() {
@@ -385,6 +670,11 @@ function getNextReminder() {
 function showMessage(message, isError) {
   els.formMessage.textContent = message;
   els.formMessage.style.color = isError ? "var(--danger)" : "var(--mint)";
+}
+
+function showCardMessage(message, isError) {
+  els.cardImportMessage.textContent = message;
+  els.cardImportMessage.style.color = isError ? "var(--danger)" : "var(--mint)";
 }
 
 function showToast(message) {
