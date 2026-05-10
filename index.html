@@ -179,6 +179,13 @@
             </label>
             <p class="hint">支援常見欄位：日期/date、金額/amount、摘要/description、類別/category。匯入後會存成信用卡支出。</p>
           </div>
+          <form id="lineCardForm" class="line-import">
+            <label>
+              <span>貼上 LINE 刷卡通知</span>
+              <textarea id="lineCardTextInput" rows="5" placeholder="貼上國泰 LINE 通知，例如：您的信用卡於 05/10 消費 NT$350 商店：星巴克"></textarea>
+            </label>
+            <button class="primary-action" type="submit">解析並加入帳目</button>
+          </form>
           <div id="cardImportMessage" class="form-message" role="status"></div>
         </section>
 
