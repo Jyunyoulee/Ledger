@@ -237,16 +237,24 @@ button {
   grid-column: span 4;
 }
 
+.monthly-panel {
+  grid-column: span 5;
+}
+
+.card-panel {
+  grid-column: span 4;
+}
+
 .category-panel {
   grid-column: span 3;
 }
 
 .reminder-panel {
-  grid-column: span 4;
+  grid-column: span 3;
 }
 
 .ledger-panel {
-  grid-column: span 8;
+  grid-column: span 9;
 }
 
 .panel-heading {
@@ -293,6 +301,14 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.compact-form {
+  margin-bottom: 12px;
+}
+
+.span-all {
+  grid-column: 1 / -1;
 }
 
 label span {
@@ -358,10 +374,42 @@ select:focus {
   grid-template-columns: 1fr 110px;
 }
 
+.month-input {
+  max-width: 160px;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.summary-cards > div,
+.import-box {
+  padding: 12px;
+  border: 1px solid rgba(160, 232, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(2, 9, 14, 0.38);
+}
+
+.summary-cards span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.summary-cards strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.05rem;
+}
+
 .bars,
 .category-list,
 .reminder-list,
-.record-list {
+.record-list,
+.tips-list {
   display: grid;
   gap: 8px;
 }
@@ -369,7 +417,8 @@ select:focus {
 .bar-row,
 .category-item,
 .reminder-item,
-.record-item {
+.record-item,
+.tip-item {
   display: grid;
   gap: 8px;
   padding: 10px;
@@ -470,8 +519,27 @@ select:focus {
   }
 
   .sidebar {
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 20;
     height: auto;
+    padding-bottom: 12px;
+  }
+
+  .brand,
+  .status-strip {
+    display: none;
+  }
+
+  .nav-list {
+    grid-template-columns: repeat(6, minmax(74px, 1fr));
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .nav-link {
+    white-space: nowrap;
+    text-align: center;
   }
 
   .hero-band,
@@ -481,10 +549,30 @@ select:focus {
 
   .record-panel,
   .summary-panel,
+  .monthly-panel,
+  .card-panel,
   .category-panel,
   .reminder-panel,
   .ledger-panel {
     grid-column: auto;
+  }
+
+  [data-panel] {
+    display: none;
+  }
+
+  [data-panel].active-panel {
+    display: block;
+  }
+
+  .content-grid {
+    display: block;
+  }
+
+  .hero-band {
+    position: sticky;
+    top: 65px;
+    z-index: 10;
   }
 }
 
@@ -499,7 +587,7 @@ select:focus {
   .sidebar,
   .hero-band,
   .panel {
-    padding: 18px;
+    padding: 14px;
   }
 
   .sidebar {
@@ -507,23 +595,37 @@ select:focus {
     border-bottom: 1px solid var(--line);
   }
 
-  .nav-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .nav-link {
-    text-align: center;
-  }
-
   .hero-band {
     min-height: auto;
   }
 
   .hero-band h2 {
-    font-size: 2rem;
+    font-size: 1.35rem;
+  }
+
+  .hero-copy,
+  .hero-band .eyebrow {
+    display: none;
   }
 
   .metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .metric-tile {
+    padding: 10px;
+  }
+
+  .metric-tile span {
+    font-size: 0.72rem;
+  }
+
+  .metric-tile strong {
+    font-size: 1rem;
+  }
+
+  .summary-cards {
     grid-template-columns: 1fr;
   }
 
