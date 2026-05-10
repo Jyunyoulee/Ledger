@@ -1,4 +1,4 @@
-const CACHE_NAME = "neon-ledger-cache-v3";
+const CACHE_NAME = "neon-ledger-cache-v4";
 const APP_FILES = [
   "./",
   "./index.html",
