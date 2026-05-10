@@ -25,10 +25,12 @@
       </div>
 
       <nav class="nav-list" aria-label="主要功能">
-        <a href="#record-panel" class="nav-link active">新增帳目</a>
-        <a href="#summary-panel" class="nav-link">今日總覽</a>
-        <a href="#category-panel" class="nav-link">類別管理</a>
-        <a href="#reminder-panel" class="nav-link">提醒設定</a>
+        <a href="#record-panel" class="nav-link active" data-panel-link="record-panel">記帳</a>
+        <a href="#monthly-panel" class="nav-link" data-panel-link="monthly-panel">月結</a>
+        <a href="#card-panel" class="nav-link" data-panel-link="card-panel">信用卡</a>
+        <a href="#ledger-panel" class="nav-link" data-panel-link="ledger-panel">明細</a>
+        <a href="#category-panel" class="nav-link" data-panel-link="category-panel">類別</a>
+        <a href="#reminder-panel" class="nav-link" data-panel-link="reminder-panel">提醒</a>
       </nav>
 
       <section class="status-strip" aria-label="提醒狀態">
@@ -45,7 +47,7 @@
         <div>
           <p class="eyebrow">Personal Finance OS</p>
           <h2>把每一筆花費變成清楚的資料訊號</h2>
-          <p class="hero-copy">支援自訂帳目類別、每日定時提醒、瀏覽器本機儲存，適合先在 Windows 開發，再搬到 Raspberry Pi 4 使用。</p>
+          <p class="hero-copy">支援自訂帳目類別、每月總結、信用卡帳單匯入與本機儲存。</p>
         </div>
         <div class="metric-grid" aria-label="今日摘要">
           <div class="metric-tile">
@@ -64,7 +66,7 @@
       </section>
 
       <section class="content-grid">
-        <form id="recordForm" class="panel record-panel" aria-labelledby="recordTitle">
+        <form id="recordForm" class="panel record-panel active-panel" aria-labelledby="recordTitle" data-panel="record-panel">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Quick Entry</p>
@@ -92,6 +94,13 @@
               <input id="dateInput" type="date" required>
             </label>
             <label>
+              <span>付款方式</span>
+              <select id="paymentInput">
+                <option value="cash">現金 / 轉帳</option>
+                <option value="card">信用卡</option>
+              </select>
+            </label>
+            <label>
               <span>備註</span>
               <input id="noteInput" type="text" maxlength="40" placeholder="早餐、交通、材料費">
             </label>
@@ -101,7 +110,7 @@
           <p class="form-message" id="formMessage" role="status"></p>
         </form>
 
-        <section id="summary-panel" class="panel summary-panel" aria-labelledby="summaryTitle">
+        <section id="summary-panel" class="panel summary-panel" aria-labelledby="summaryTitle" data-panel="summary-panel">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Signal View</p>
@@ -112,7 +121,68 @@
           <div id="categoryBars" class="bars" aria-live="polite"></div>
         </section>
 
-        <section id="category-panel" class="panel category-panel" aria-labelledby="categoryTitle">
+        <section id="monthly-panel" class="panel monthly-panel" aria-labelledby="monthlyTitle" data-panel="monthly-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Monthly Coach</p>
+              <h3 id="monthlyTitle">每月總結</h3>
+            </div>
+            <input id="monthInput" class="month-input" type="month" aria-label="選擇月份">
+          </div>
+          <div class="summary-cards">
+            <div>
+              <span>本月支出</span>
+              <strong id="monthExpense">$0</strong>
+            </div>
+            <div>
+              <span>信用卡支出</span>
+              <strong id="cardExpense">$0</strong>
+            </div>
+            <div>
+              <span>最大類別</span>
+              <strong id="topCategory">尚無</strong>
+            </div>
+          </div>
+          <div id="savingTips" class="tips-list" aria-live="polite"></div>
+        </section>
+
+        <section id="card-panel" class="panel card-panel" aria-labelledby="cardTitle" data-panel="card-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Card Import</p>
+              <h3 id="cardTitle">信用卡帳單</h3>
+            </div>
+          </div>
+          <form id="cardForm" class="form-grid compact-form">
+            <label>
+              <span>刷卡日期</span>
+              <input id="cardDateInput" type="date" required>
+            </label>
+            <label>
+              <span>金額</span>
+              <input id="cardAmountInput" type="number" min="1" step="1" required>
+            </label>
+            <label>
+              <span>類別</span>
+              <select id="cardCategorySelect" required></select>
+            </label>
+            <label>
+              <span>店家 / 摘要</span>
+              <input id="cardNoteInput" type="text" maxlength="48" placeholder="例如 超商、網購、餐廳">
+            </label>
+            <button class="primary-action span-all" type="submit">加入信用卡帳目</button>
+          </form>
+          <div class="import-box">
+            <label>
+              <span>匯入信用卡 CSV</span>
+              <input id="cardCsvInput" type="file" accept=".csv,text/csv">
+            </label>
+            <p class="hint">支援常見欄位：日期/date、金額/amount、摘要/description、類別/category。匯入後會存成信用卡支出。</p>
+          </div>
+          <div id="cardImportMessage" class="form-message" role="status"></div>
+        </section>
+
+        <section id="category-panel" class="panel category-panel" aria-labelledby="categoryTitle" data-panel="category-panel">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Custom Taxonomy</p>
@@ -127,7 +197,7 @@
           <div id="categoryList" class="category-list" aria-live="polite"></div>
         </section>
 
-        <section id="reminder-panel" class="panel reminder-panel" aria-labelledby="reminderTitle">
+        <section id="reminder-panel" class="panel reminder-panel" aria-labelledby="reminderTitle" data-panel="reminder-panel">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Reminder Core</p>
@@ -140,10 +210,10 @@
             <button type="submit">加入時間</button>
           </form>
           <div id="reminderList" class="reminder-list" aria-live="polite"></div>
-          <p class="hint">預設提醒：12:30、21:20。瀏覽器通知需要保持 App 開啟。</p>
+          <p class="hint">預設提醒：12:30、21:20。iPhone 建議搭配內建提醒事項。</p>
         </section>
 
-        <section class="panel ledger-panel" aria-labelledby="ledgerTitle">
+        <section id="ledger-panel" class="panel ledger-panel" aria-labelledby="ledgerTitle" data-panel="ledger-panel">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Ledger Stream</p>
